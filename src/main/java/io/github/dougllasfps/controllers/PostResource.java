@@ -1,16 +1,21 @@
 package io.github.dougllasfps.controllers;
 
 import io.github.dougllasfps.dtos.CreatePostRequest;
+import io.github.dougllasfps.dtos.PostResponse;
 import io.github.dougllasfps.model.Post;
 import io.github.dougllasfps.model.User;
 import io.github.dougllasfps.repository.PostRepository;
 import io.github.dougllasfps.repository.UserRepository;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import io.quarkus.panache.common.Sort;
 
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @Path("/users/{userId}/posts")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -37,6 +42,7 @@ public class PostResource {
         Post post = new Post();
         post.setText(request.getText());
         post.setUser(user);
+        post.setDateTime(LocalDateTime.now());
 
         postRepository.persist(post);
 
@@ -50,6 +56,13 @@ public class PostResource {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
 
-        return Response.ok().build();
+        PanacheQuery<Post> query = postRepository.find("user", Sort.by("dateTime", Sort.Direction.Descending), user);
+        var list = query.list();
+        var postResponseList = list.stream()
+                //.map(post -> PostResponse.fromEntity(post))
+                .map(PostResponse::fromEntity)
+                .collect(Collectors.toList());
+
+        return Response.ok(postResponseList).build();
     }
 }
